@@ -1,0 +1,11 @@
+- hosts: all
+  gather_facts: no
+  vars_files:
+    - "../inventory/group_vars/vault.yml"
+  tasks:
+    - name: Debug vault variable
+      debug:
+        var: vault_google_credentials
+    - name: Debug mapped variable
+      debug:
+        var: google_credentials

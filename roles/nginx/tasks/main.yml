@@ -1,0 +1,92 @@
+---
+# Create the container
+- name: Create Nginx container
+  community.general.proxmox:
+    node: "pve"
+    api_host: "{{ ansible_host }}"  # Add this line
+    api_user: "root@pam"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}" 
+    vmid: "{{ nginx_container_id }}"
+    hostname: "{{ nginx_hostname }}"
+    ostemplate: "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"
+    storage: "containers"
+    memory: 250
+    netif: '{"net0":"name=eth0,bridge=vmbr0,ip={{ nginx_ip }}/{{ nginx_netmask }},gw={{ nginx_gateway }}"}'
+    pubkey: "{{ lookup('pipe', 'ssh-add -L | head -n 1') }}"
+    state: present
+
+# Rest of the file stays the same...
+
+# Start the container
+- name: Start Nginx container
+  community.general.proxmox:
+    node: "pve"
+    api_host: "{{ ansible_host }}"
+    api_user: "root@pam"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"
+    vmid: "{{ nginx_container_id }}"
+    state: started
+
+
+# Install packages
+- name: Install required packages
+  apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+      - python3-certbot-dns-google
+    state: present
+    update_cache: yes
+  delegate_to: "{{ nginx_hostname }}"
+
+# Copy your site configs
+- name: Copy nginx site configs
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/nginx/sites-available/{{ item }}"
+  loop:
+    - nginx.macalpine.org
+    - pihole.macalpine.org
+    - proxmox.macalpine.org
+  delegate_to: "{{ nginx_hostname }}"
+
+# Create symlinks
+- name: Create symlinks for sites
+  file:
+    src: "/etc/nginx/sites-available/{{ item }}"
+    dest: "/etc/nginx/sites-enabled/{{ item }}"
+    state: link
+  loop:
+    - nginx.macalpine.org
+    - pihole.macalpine.org
+    - proxmox.macalpine.org
+  delegate_to: "{{ nginx_hostname }}"
+
+# Copy Google credentials
+- name: Copy Google credentials file
+  copy:
+    content: "{{ google_credentials }}"
+    dest: /root/google.json
+    mode: '0600'
+  delegate_to: "{{ nginx_hostname }}"
+
+# Get certificates
+- name: Get certificates using certbot
+  shell: >
+    certbot certonly --dns-google 
+    --dns-google-credentials ~/google.json 
+    --agree-tos
+    --email macalpine@gmail.com
+    -d nginx.macalpine.org 
+    -d proxmox.macalpine.org 
+    -d pihole.macalpine.org
+    --non-interactive
+  delegate_to: "{{ nginx_hostname }}"
+
+# Test and reload nginx
+- name: Test and reload nginx
+  shell: nginx -t && systemctl reload nginx
+  delegate_to: "{{ nginx_hostname }}"

@@ -1,0 +1,5 @@
+# Map vault variables to their regular names
+google_credentials: "{{ vault_google_credentials }}"
+proxmox_api_token_id: "{{ vault_proxmox_api_token_id }}"
+proxmox_api_token_secret: "{{ vault_proxmox_api_token_secret }}"
+bobs_your_uncle: "damn the man"

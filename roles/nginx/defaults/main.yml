@@ -1,0 +1,12 @@
+---
+# Container settings
+nginx_container_id: 202
+nginx_hostname: "nginx.macalpine.org"
+nginx_ip: "192.168.1.55"
+nginx_netmask: "24"
+nginx_gateway: "192.168.1.1"
+
+# Backend services
+pihole_ip: "192.168.1.53"
+proxmox_ip: "192.168.1.246"
+proxmox_port: "8006"

@@ -1,0 +1,39 @@
+---
+- name: Start VMs and Containers
+  hosts: proxmox
+  tasks:
+    # Get lists first
+    - name: Get VM list
+      shell: qm list | tail -n +2 | awk '{print $1}'
+      register: vm_list
+
+    - name: Get container list
+      shell: pct list | tail -n +2 | awk '{print $1}'
+      register: ct_list
+
+    # Start VMs
+    - name: Start VMs
+      shell: qm start {{ item }}
+      loop: "{{ vm_list.stdout_lines }}"
+      when: vm_list.stdout_lines | length > 0
+      ignore_errors: yes  # Some VMs might be intentionally stopped
+
+    # Start Containers
+    - name: Start Containers
+      shell: pct start {{ item }}
+      loop: "{{ ct_list.stdout_lines }}"
+      when: ct_list.stdout_lines | length > 0
+      ignore_errors: yes
+
+    # Show status
+    - name: Show current status
+      shell: |
+        echo "=== VM Status ==="
+        qm list
+        echo -e "\n=== Container Status ==="
+        pct list
+      register: status
+
+    - name: Display results
+      debug:
+        var: status.stdout_lines

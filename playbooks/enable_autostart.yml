@@ -1,0 +1,38 @@
+---
+- name: Configure Auto-start
+  hosts: proxmox
+  tasks:
+    # Get VM list first
+    - name: Get VM list
+      shell: qm list | tail -n +2 | awk '{print $1}'
+      register: vm_list
+
+    # Get container list
+    - name: Get container list
+      shell: pct list | tail -n +2 | awk '{print $1}'
+      register: ct_list
+
+    # Enable VM autostart
+    - name: Enable auto-start for VMs
+      shell: qm set {{ item }} -onboot 1
+      loop: "{{ vm_list.stdout_lines }}"
+      when: vm_list.stdout_lines | length > 0
+
+    # Enable Container autostart
+    - name: Enable auto-start for containers
+      shell: pct set {{ item }} -onboot 1
+      loop: "{{ ct_list.stdout_lines }}"
+      when: ct_list.stdout_lines | length > 0
+
+    # Verify settings
+    - name: Show current settings
+      shell: |
+        echo "=== VM Settings ==="
+        qm list
+        echo -e "\n=== Container Settings ==="
+        pct list
+      register: status
+
+    - name: Display results
+      debug:
+        var: status.stdout_lines

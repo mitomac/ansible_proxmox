@@ -1,0 +1,34 @@
+---
+- name: Test Nginx Setup
+  hosts: proxmox
+  vars_files:
+    - "../inventory/group_vars/vault.yml"
+  vars:
+    # Override with test values if needed
+    nginx_container_id: 202
+    nginx_hostname: "nginx-test.macalpine.org"
+    nginx_ip: "192.168.1.55"
+  
+  pre_tasks:
+    - name: Check if test container exists
+      community.general.proxmox:
+        node: "pve"
+        api_host: "{{ ansible_host }}"  # Add this line
+        api_user: "root@pam"
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        vmid: "{{ nginx_container_id }}"
+        state: absent
+      ignore_errors: yes
+
+  roles:
+    - nginx
+
+  post_tasks:
+    - name: Show container status
+      shell: pct list | grep {{ nginx_container_id }}
+      register: container_status
+
+    - name: Display result
+      debug:
+        var: container_status.stdout
